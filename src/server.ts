@@ -9,9 +9,9 @@ const buildApp = (): FastifyInstance => {
 
   app.register(import("@fastify/cors"), { origin: true });
 
-  app.register(firesRoutes, { prefix: "/fires" });
-  app.register(activeRoutes, { prefix: "/active" });
-  app.register(riskRoutes, { prefix: "/risk" });
+  app.register(firesRoutes, { prefix: "/api/fires" });
+  app.register(activeRoutes, { prefix: "/api/active" });
+  app.register(riskRoutes, { prefix: "/api/risk" });
 
   return app;
 };
