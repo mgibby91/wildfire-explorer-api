@@ -39,10 +39,14 @@ involving spatial data, mapping, and location-based systems.
 
 ## Environment variables
 ```
-DATABASE_URL=postgresql://wildfire:wildfire@localhost:5432/wildfire
+PORT=3001
+DB_HOST=localhost
+DB_PORT=55433
+DB_NAME=wildfire
+DB_USER=wildfire
+DB_PASSWORD=wildfire
 FIRMS_API_KEY=...
 MAPBOX_TOKEN=...
-PORT=3000
 ```
 
 ## Current build phase
@@ -77,6 +81,26 @@ WHERE ST_DWithin(geom::geography,
 SELECT COUNT(*) FROM active_hotspots
 WHERE acquired_at > NOW() - INTERVAL '24 hours';
 ```
+
+## Coding standards
+
+### General
+- Use arrow functions for all functions — named function declarations only where necessary (e.g. Fastify plugin signatures require `async function` in some edge cases, prefer arrow functions otherwise)
+- Add a blank line between logical blocks of code (imports, declarations, logic, return)
+- Use `type` imports (`import type { ... }`) for TypeScript-only imports
+
+### Project structure
+- Types live in `src/types/{domain}.types.ts` — one file per domain
+- Fastify schemas live in `src/schemas/{domain}.schema.ts` — one file per domain
+- Services are named after the domain concept they serve, not the data source
+  (e.g. `active.service.ts`, not `firms.service.ts`)
+- Routes import their schema and types from the above files — never define them inline
+
+### API responses
+- List endpoints return `FeatureCollection` with **simplified geometry** (`ST_SimplifyPreserveTopology(geom, 0.001)`) and display fields only
+- Detail endpoints (single resource by ID) return a single `Feature` with **full-resolution geometry** and all fields
+- DB rows are mapped to GeoJSON using a `rowTo{Domain}Feature(row)` mapper function — never map inline inside a `.map()` call
+- Errors always follow `{ error: string, statusCode: number }`
 
 ## Notes & decisions
 - Geometry simplified on API read, not on write — store full res, simplify for transport

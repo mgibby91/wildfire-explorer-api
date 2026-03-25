@@ -1,6 +1,7 @@
 # Wildfire Explorer — Technical Plan
 
 ## Stack
+
 - **Backend:** Node.js + TypeScript + Fastify + PostGIS (PostgreSQL)
 - **Frontend:** React + TypeScript + Mapbox GL JS
 - **Infra:** Docker (local dev), deploy target TBD (Railway / Render / Fly.io recommended)
@@ -11,6 +12,7 @@
 ## Phase 1 — Database & Server Foundation (Week 1)
 
 ### Goals
+
 Get PostGIS running, data ingested, and core API endpoints working.
 No frontend yet — validate everything with curl or a REST client.
 
@@ -21,7 +23,9 @@ No frontend yet — validate everything with curl or a REST client.
 Two separate repos — open each in its own VS Code window.
 
 **`wildfire-explorer-api`** — backend, ETL, and Docker
+
 > Repo named `wildfire-explorer-api` (not `wildfire-api` as originally planned)
+
 ```
 wildfire-explorer-api/
 ├── CLAUDE.md
@@ -53,6 +57,7 @@ wildfire-explorer-api/
 ```
 
 **`wildfire-web`** — React + Mapbox frontend
+
 ```
 wildfire-web/
 ├── CLAUDE.md           # frontend-specific Claude context
@@ -109,12 +114,14 @@ Files live in `src/db/migrations/` and are auto-applied by Docker on first start
 Name them with numeric prefixes so they run in order (`001-`, `002-`, etc.).
 
 **001-init.sql** ✅ already exists
+
 ```sql
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS postgis_topology;
 ```
 
 **002-fire-perimeters.sql** ← TODO: create this file
+
 ```sql
 CREATE TABLE fire_perimeters (
   id              SERIAL PRIMARY KEY,
@@ -142,6 +149,7 @@ CREATE INDEX idx_fire_perimeters_state ON fire_perimeters (state);
 ```
 
 **003-active-hotspots.sql** ← TODO: create this file
+
 ```sql
 CREATE TABLE active_hotspots (
   id              SERIAL PRIMARY KEY,
@@ -163,6 +171,7 @@ CREATE INDEX idx_hotspots_acquired_at ON active_hotspots (acquired_at DESC);
 ```
 
 **004-risk-scores.sql** ← TODO: create this file
+
 ```sql
 -- Materialized view — recomputed nightly
 -- Combines: proximity to historical fires + frequency + fuel load (Phase 2)
@@ -185,22 +194,23 @@ CREATE INDEX idx_risk_grid_cell ON risk_grid USING GIST (cell);
 ### 1.4 ETL — Loading NIFC Historical Perimeters
 
 **Data source:**
-- URL: https://data-nifc.opendata.arcgis.com/datasets/nifc::interagency-fire-perimeter-history-all-years
+
+- URL: https://data-nifc.opendata.arcgis.com/datasets/nifc::interagencyfireperimeterhistory-all-years-view/about
 - Download: GeoJSON or Shapefile (GeoJSON preferred for Node ETL)
 - Size: ~200MB, covers all US fires with recorded perimeters
 
 **etl/load-nifc.ts** — lives in `wildfire-explorer-api/etl/`, stub exists, needs implementation:
 
 ```typescript
-import { Client } from 'pg';
-import * as fs from 'fs';
+import { Client } from "pg";
+import * as fs from "fs";
 
 // After downloading NIFC GeoJSON to ./data/nifc-perimeters.geojson
 async function loadNIFC() {
   const client = new Client({ connectionString: process.env.DATABASE_URL });
   await client.connect();
 
-  const raw = fs.readFileSync('./data/nifc-perimeters.geojson', 'utf-8');
+  const raw = fs.readFileSync("./data/nifc-perimeters.geojson", "utf-8");
   const fc = JSON.parse(raw);
 
   let loaded = 0;
@@ -210,24 +220,27 @@ async function loadNIFC() {
     // Skip features with no geometry or useless records
     if (!feature.geometry) continue;
 
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO fire_perimeters
         (fire_name, year, agency, state, acres_burned, cause,
          fire_date_start, fire_date_end, source, country, geom)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'NIFC','US',
               ST_SetSRID(ST_GeomFromGeoJSON($9), 4326))
       ON CONFLICT DO NOTHING
-    `, [
-      p.IncidentName,
-      p.FireYear,
-      p.Agency,
-      p.State,
-      p.GISAcres,
-      p.FireCause,
-      p.DateCurrent,
-      p.ContainDate,
-      JSON.stringify(feature.geometry),
-    ]);
+    `,
+      [
+        p.IncidentName,
+        p.FireYear,
+        p.Agency,
+        p.State,
+        p.GISAcres,
+        p.FireCause,
+        p.DateCurrent,
+        p.ContainDate,
+        JSON.stringify(feature.geometry),
+      ],
+    );
 
     loaded++;
     if (loaded % 1000 === 0) console.log(`Loaded ${loaded} perimeters...`);
@@ -241,6 +254,7 @@ loadNIFC().catch(console.error);
 ```
 
 **Run once:** `npx tsx etl/load-nifc.ts`
+
 > Note: project uses `tsx` not `ts-node` (see `package.json`)
 
 > Tip for Claude Code: after this runs, query `SELECT COUNT(*), MIN(year), MAX(year) FROM fire_perimeters;`
@@ -251,32 +265,36 @@ loadNIFC().catch(console.error);
 ### 1.5 NASA FIRMS Integration
 
 **API setup:**
+
 1. Register at https://firms.modaps.eosdis.nasa.gov/api/
 2. Get a free MAP_KEY (instant, no approval needed)
 3. Add to `.env` as `FIRMS_API_KEY`
 
 **Endpoint format:**
+
 ```
 https://firms.modaps.eosdis.nasa.gov/api/area/csv/{KEY}/VIIRS_SNPP_NRT/{BBOX}/1/{DATE}
 ```
+
 Where BBOX is `W,S,E,N` and DATE is `YYYY-MM-DD`.
 
 **jobs/firms-poller.ts** — runs every 3 hours via `node-cron`:
 
 ```typescript
-import cron from 'node-cron';
-import fetch from 'node-fetch';
-import { pool } from '../db/client';
+import cron from "node-cron";
+import fetch from "node-fetch";
+import { pool } from "../db/client";
 
 // Continental US + southern Canada bounding box
-const BBOX = '-168,24,-52,70';
+const BBOX = "-168,24,-52,70";
 
 export function startFirmsPoller() {
   // Every 3 hours
-  cron.schedule('0 */3 * * *', async () => {
-    const today = new Date().toISOString().split('T')[0];
-    const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv`
-      + `/${process.env.FIRMS_API_KEY}/VIIRS_SNPP_NRT/${BBOX}/1/${today}`;
+  cron.schedule("0 */3 * * *", async () => {
+    const today = new Date().toISOString().split("T")[0];
+    const url =
+      `https://firms.modaps.eosdis.nasa.gov/api/area/csv` +
+      `/${process.env.FIRMS_API_KEY}/VIIRS_SNPP_NRT/${BBOX}/1/${today}`;
 
     const res = await fetch(url);
     const csv = await res.text();
@@ -284,14 +302,22 @@ export function startFirmsPoller() {
 
     // Upsert — FIRMS data can repeat across polls
     for (const row of rows) {
-      await pool.query(`
+      await pool.query(
+        `
         INSERT INTO active_hotspots
           (latitude, longitude, brightness, confidence, instrument, acquired_at, geom)
         VALUES ($1,$2,$3,$4,'VIIRS',$5,
                 ST_SetSRID(ST_MakePoint($2,$1), 4326))
         ON CONFLICT DO NOTHING
-      `, [row.latitude, row.longitude, row.brightness,
-          row.confidence, row.acq_date]);
+      `,
+        [
+          row.latitude,
+          row.longitude,
+          row.brightness,
+          row.confidence,
+          row.acq_date,
+        ],
+      );
     }
 
     // Prune hotspots older than 72 hours
@@ -309,6 +335,7 @@ export function startFirmsPoller() {
 All routes return GeoJSON-compatible responses. Fastify handles JSON schema validation.
 
 **GET /api/fires** — Historical perimeters near a point
+
 ```
 Query params:
   lat      float    required
@@ -333,6 +360,7 @@ Response:
 ```
 
 **Core SQL for this route:**
+
 ```sql
 SELECT
   id, fire_name, year, agency, state, acres_burned,
@@ -360,6 +388,7 @@ LIMIT $6
 ---
 
 **GET /api/fires/bbox** — Perimeters within a bounding box (for map viewport queries)
+
 ```
 Query params:
   west, south, east, north   float   required
@@ -383,6 +412,7 @@ LIMIT $5
 ---
 
 **GET /api/fires/:id** — Single fire with full-resolution geometry
+
 ```sql
 SELECT *, ST_AsGeoJSON(geom) AS geom_json
 FROM fire_perimeters WHERE id = $1
@@ -391,6 +421,7 @@ FROM fire_perimeters WHERE id = $1
 ---
 
 **GET /api/active** — Current NASA FIRMS hotspots
+
 ```
 Query params:
   west, south, east, north   float   optional (defaults to full NA)
@@ -400,6 +431,7 @@ Query params:
 ---
 
 **GET /api/risk** — Risk score for a point
+
 ```
 Query params:
   lat   float   required
@@ -426,25 +458,25 @@ Response:
 > `startFirmsPoller()` also needs to be called after server starts.
 
 ```typescript
-import Fastify from 'fastify';
-import { env } from './config/env';
-import firesRoutes from './routes/fires';
-import activeRoutes from './routes/active';
-import riskRoutes from './routes/risk';
-import { startFirmsPoller } from './jobs/firms-poller';
+import Fastify from "fastify";
+import { env } from "./config/env";
+import firesRoutes from "./routes/fires";
+import activeRoutes from "./routes/active";
+import riskRoutes from "./routes/risk";
+import { startFirmsPoller } from "./jobs/firms-poller";
 
 const buildApp = () => {
   const app = Fastify({ logger: true });
-  app.register(import('@fastify/cors'), { origin: true });
-  app.register(firesRoutes, { prefix: '/api' });
-  app.register(activeRoutes, { prefix: '/api' });
-  app.register(riskRoutes, { prefix: '/api' });
+  app.register(import("@fastify/cors"), { origin: true });
+  app.register(firesRoutes, { prefix: "/api" });
+  app.register(activeRoutes, { prefix: "/api" });
+  app.register(riskRoutes, { prefix: "/api" });
   return app;
 };
 
 const start = async () => {
   const app = buildApp();
-  await app.listen({ port: env.port, host: '0.0.0.0' });
+  await app.listen({ port: env.port, host: "0.0.0.0" });
   startFirmsPoller();
 };
 
@@ -459,6 +491,7 @@ void start();
 ## Phase 2 — React + Mapbox Frontend (Week 2)
 
 ### Goals
+
 Map-based UI with satellite base style, fire polygon layers, hotspot markers,
 and a query sidebar. Users click a point or draw a bbox to query the API.
 
@@ -489,6 +522,7 @@ web/src/
 ```
 
 ### Mapbox Setup Notes
+
 - Use `mapbox://styles/mapbox/satellite-streets-v12` as base — fire data looks
   dramatically better on satellite than street maps
 - Fire perimeters: `fill` layer with year-based color ramp (older = cool blue,
@@ -498,12 +532,14 @@ web/src/
 - Add `mapbox-gl-draw` for bbox selection (user draws a rectangle to query)
 
 ### Year Slider (MVP "Wow" Feature)
+
 Filter the `fire_perimeters` source by year using Mapbox expression filters —
 no re-fetch needed, just client-side layer filtering:
 
 ```typescript
-map.setFilter('fire-fills', ['==', ['get', 'year'], selectedYear]);
+map.setFilter("fire-fills", ["==", ["get", "year"], selectedYear]);
 ```
+
 Load all perimeters for the visible viewport once, then the slider is instant.
 
 ---
@@ -511,6 +547,7 @@ Load all perimeters for the visible viewport once, then the slider is instant.
 ## Phase 3 — Polish & Expansion (Week 3+)
 
 ### Week 3 MVP Completion
+
 - [ ] Deployed to Railway or Render (free tier works for portfolio)
 - [ ] Year timeline slider fully working
 - [ ] Click any point → sidebar shows nearest fires + risk score
@@ -519,6 +556,7 @@ Load all perimeters for the visible viewport once, then the slider is instant.
 - [ ] README with screenshots and live URL
 
 ### Post-MVP Expansion Ideas (Months 2–4)
+
 1. **Canada CIFFC data** — equivalent dataset from Canadian Interagency Forest
    Fire Centre. Adds personal relevance (Calgary) and differentiates the project.
 2. **Evacuation route analysis** — overlay OSM road network, flag roads that

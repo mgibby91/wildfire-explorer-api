@@ -3,6 +3,7 @@ import { env } from "./config/env";
 import firesRoutes from "./routes/fires";
 import activeRoutes from "./routes/active";
 import riskRoutes from "./routes/risk";
+import { startFirmsPoller } from "./jobs/firms-poller";
 
 const buildApp = (): FastifyInstance => {
   const app: FastifyInstance = Fastify({ logger: true });
@@ -22,6 +23,7 @@ const start = async (): Promise<void> => {
   try {
     await app.listen({ port: env.port, host: "0.0.0.0" });
     app.log.info(`Server running on http://localhost:${env.port}`);
+    startFirmsPoller();
   } catch (error: unknown) {
     app.log.error(error);
     process.exit(1);
