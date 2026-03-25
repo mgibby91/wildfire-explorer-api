@@ -67,13 +67,14 @@ const poll = async (): Promise<void> => {
     const lng = parseFloat(row.longitude);
     const brightness = parseFloat(row.bright_ti4) || null;
     const confidence = normaliseConfidence(row.confidence);
-    const acquiredAt = `${row.acq_date} ${row.acq_time?.slice(0, 2)}:${row.acq_time?.slice(2, 4)}:00`;
+    const time = (row.acq_time ?? '0000').padStart(4, '0');
+    const acquiredAt = `${row.acq_date} ${time.slice(0, 2)}:${time.slice(2, 4)}:00`;
 
     await db.query(
       `INSERT INTO active_hotspots
          (latitude, longitude, brightness, confidence, instrument, acquired_at, geom)
-       VALUES ($1, $2, $3, $4, 'VIIRS', $5,
-               ST_SetSRID(ST_MakePoint($2, $1), 4326))
+       VALUES ($1::numeric, $2::numeric, $3, $4, 'VIIRS', $5,
+               ST_SetSRID(ST_MakePoint($2::float8, $1::float8), 4326))
        ON CONFLICT (latitude, longitude, acquired_at, instrument)
        DO NOTHING`,
       [lat, lng, brightness, confidence, acquiredAt],
