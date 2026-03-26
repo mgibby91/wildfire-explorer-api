@@ -554,6 +554,9 @@ Load all perimeters for the visible viewport once, then the slider is instant.
 - [ ] Active hotspots pulsing on map, refreshing every 10 min
 - [ ] Mobile-responsive layout
 - [ ] README with screenshots and live URL
+- [ ] Introduce **shadcn/ui** for UI components (built on Radix UI primitives,
+      Tailwind-based, no imposed design language — better fit than MUI for a
+      map-first app). Add Tailwind at this point.
 
 ### Post-MVP Expansion Ideas (Months 2–4)
 
