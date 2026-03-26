@@ -560,7 +560,16 @@ Load all perimeters for the visible viewport once, then the slider is instant.
 
 ### Post-MVP Expansion Ideas (Months 2–4)
 
-1. **Canada CIFFC data** — equivalent dataset from Canadian Interagency Forest
+1. **FRP-based hotspot filtering** — The FIRMS VIIRS CSV response includes an `frp` field
+   (Fire Radiative Power in MW) that the current poller drops. Industrial sources (power plants,
+   steel mills) typically read <10 MW; agricultural burns 10–100 MW; wildfires 100+ MW. Adding
+   FRP would let users filter out industrial false positives. Steps: add `frp NUMERIC` column to
+   `active_hotspots`, extend `FirmsRow` and the INSERT in `firms-poller.ts` to capture it, expose
+   it in `HotspotProperties`, add optional `min_frp` query param to `GET /api/active`.
+   `brightness` (`bright_ti4`, Kelvin) is already stored and is a useful proxy, but FRP is the
+   more discriminating field for fire vs. industrial heat.
+
+2. **Canada CIFFC data** — equivalent dataset from Canadian Interagency Forest
    Fire Centre. Adds personal relevance (Calgary) and differentiates the project.
 2. **Evacuation route analysis** — overlay OSM road network, flag roads that
    intersect active perimeters. Requires pgRouting.
