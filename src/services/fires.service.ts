@@ -1,10 +1,10 @@
-import { db } from "../db/client";
+import { db } from '../db/client';
 import type {
   Feature,
   FeatureCollection,
   Geometry,
   MultiPolygon,
-} from "geojson";
+} from 'geojson';
 
 export interface FireProperties {
   id: number;
@@ -25,7 +25,10 @@ const rowToFireFeature = (
   row: Record<string, unknown>,
 ): Feature<Geometry, FireProperties> => {
   return {
-    type: "Feature",
+    type: 'Feature',
+    // Top-level id is required by Mapbox setFeatureState — it must live here,
+    // not only inside properties, per GeoJSON spec (RFC 7946).
+    id: row.id as number,
     geometry: JSON.parse(row.geom_json as string),
     properties: {
       id: row.id as number,
@@ -82,7 +85,7 @@ export const getFiresNearPoint = async (
     [lat, lng, radiusKm, yearMin ?? null, yearMax ?? null, limit],
   );
 
-  return { type: "FeatureCollection", features: rows.map(rowToFireFeature) };
+  return { type: 'FeatureCollection', features: rows.map(rowToFireFeature) };
 };
 
 export const getFiresInBbox = async (
@@ -109,7 +112,7 @@ export const getFiresInBbox = async (
     [west, south, east, north, yearMin ?? null, yearMax ?? null, limit],
   );
 
-  return { type: "FeatureCollection", features: rows.map(rowToFireFeature) };
+  return { type: 'FeatureCollection', features: rows.map(rowToFireFeature) };
 };
 
 export const getFireById = async (
