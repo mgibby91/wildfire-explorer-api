@@ -74,6 +74,7 @@ export const getFiresNearPoint = async (
       ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography,
       $3 * 1000
     )
+    AND year BETWEEN 1900 AND EXTRACT(YEAR FROM NOW())
     AND ($4::int IS NULL OR year >= $4)
     AND ($5::int IS NULL OR year <= $5)
     ORDER BY distance_km ASC
@@ -100,6 +101,7 @@ export const getFiresInBbox = async (
     FROM fire_perimeters
     WHERE geom && ST_MakeEnvelope($1, $2, $3, $4, 4326)
       AND ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))
+      AND year BETWEEN 1900 AND EXTRACT(YEAR FROM NOW())
       AND ($5::int IS NULL OR year >= $5)
       AND ($6::int IS NULL OR year <= $6)
     ORDER BY acres_burned DESC NULLS LAST
