@@ -557,6 +557,10 @@ Load all perimeters for the visible viewport once, then the slider is instant.
 - [ ] Introduce **shadcn/ui** for UI components (built on Radix UI primitives,
       Tailwind-based, no imposed design language — better fit than MUI for a
       map-first app). Add Tailwind at this point.
+- [ ] **Collapsible sidebar** — replace current fixed sidebar with shadcn/ui `Sheet`
+      component. Gets animation, accessibility (focus trap, escape key), and toggle
+      button for free. Map overlay controls (slider, search, legend) should shift
+      position when sidebar is open.
 
 ### Post-MVP Expansion Ideas (Months 2–4)
 
