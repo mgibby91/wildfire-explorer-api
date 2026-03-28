@@ -4,4 +4,5 @@ export interface ActiveQuery {
   east?: number;
   north?: number;
   min_confidence?: string;
+  min_frp?: number;
 }

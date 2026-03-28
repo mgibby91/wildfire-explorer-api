@@ -1,0 +1,1 @@
+ALTER TABLE active_hotspots ADD COLUMN IF NOT EXISTS frp NUMERIC;
