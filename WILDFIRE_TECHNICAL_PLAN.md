@@ -544,16 +544,25 @@ Load all perimeters for the visible viewport once, then the slider is instant.
 
 ---
 
-## Phase 3 — Polish & Expansion (Week 3+)
+## Phase 2 — Remaining work (priority order)
 
-### Week 3 MVP Completion
+- [ ] **Draw custom bbox** — rectangle draw tool implemented with raw Mapbox map events
+      (mousedown/mousemove/mouseup). No external dependency. See MapView + useDrawMode hook.
+- [ ] **Reconsider bbox ORDER BY** — currently `acres_burned DESC`. Alternative: `year DESC, acres_burned DESC`
+      to match sidebar sort and prioritise recent fires when viewport is large. Decision pending.
+- [ ] **Deploy** — Railway or Render (free tier). README with screenshots and live URL.
+- [ ] **FRP hotspot filtering** — capture `frp` field from FIRMS CSV, add to DB schema,
+      expose as `min_frp` query param on `/api/active`. Filters industrial false positives
+      before deploying to a wider audience.
+- [ ] **Risk score** — click map point → query `/api/risk` → show score + breakdown in
+      sidebar. Visual treatment: draw 50km radius circle on map at clicked point (makes
+      coverage area explicit), show sub-components (fire count, most recent year, largest
+      fire, nearby hotspots) alongside the 0–100 score.
 
-- [ ] Deployed to Railway or Render (free tier works for portfolio)
-- [ ] Year timeline slider fully working
-- [ ] Click any point → sidebar shows nearest fires + risk score
-- [ ] Active hotspots pulsing on map, refreshing every 10 min
-- [ ] Mobile-responsive layout
-- [ ] README with screenshots and live URL
+## Phase 3 — Polish & Expansion
+
+### MVP Polish
+
 - [ ] Introduce **shadcn/ui** for UI components (built on Radix UI primitives,
       Tailwind-based, no imposed design language — better fit than MUI for a
       map-first app). Add Tailwind at this point.
@@ -561,6 +570,7 @@ Load all perimeters for the visible viewport once, then the slider is instant.
       component. Gets animation, accessibility (focus trap, escape key), and toggle
       button for free. Map overlay controls (slider, search, legend) should shift
       position when sidebar is open.
+- [ ] Mobile-responsive layout
 
 ### Post-MVP Expansion Ideas (Months 2–4)
 
