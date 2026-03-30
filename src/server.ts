@@ -9,7 +9,9 @@ import { startFirmsPoller } from './jobs/firms-poller';
 const buildApp = (): FastifyInstance => {
   const app: FastifyInstance = Fastify({ logger: true });
 
-  app.register(cors, { origin: 'https://wildfire-explorer-web.vercel.app' });
+  app.register(cors, {
+    origin: ['https://wildfire-explorer-web.vercel.app', 'http://localhost:5173'],
+  });
 
   app.register(firesRoutes, { prefix: '/api/fires' });
   app.register(activeRoutes, { prefix: '/api/active' });
