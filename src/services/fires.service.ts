@@ -100,7 +100,7 @@ export const getFiresInBbox = async (
   const { rows } = await db.query(
     `SELECT
       id, fire_name, year, agency, state, acres_burned,
-      ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom, 0.001)) AS geom_json
+      ST_AsGeoJSON(geom_simplified) AS geom_json
     FROM fire_perimeters
     WHERE geom && ST_MakeEnvelope($1, $2, $3, $4, 4326)
       AND ST_Intersects(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))

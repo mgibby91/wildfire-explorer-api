@@ -66,9 +66,10 @@ const load = async (): Promise<void> => {
       await client.query(
         `INSERT INTO fire_perimeters
            (fire_name, year, agency, state, acres_burned,
-            fire_date_start, source, country, geom)
+            fire_date_start, source, country, geom, geom_simplified)
          VALUES ($1, $2, $3, $4, $5, $6, 'CIFFC', 'CA',
-                 ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($7), 4326)))
+                 ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($7), 4326)),
+                 ST_SimplifyPreserveTopology(ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($7), 4326)), 0.001))
          ON CONFLICT (fire_name, year, state, source)
            WHERE fire_name IS NOT NULL AND state IS NOT NULL
          DO NOTHING`,

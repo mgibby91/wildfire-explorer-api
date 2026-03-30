@@ -1,12 +1,12 @@
-import * as fs from "fs";
-import * as path from "path";
-import * as readline from "readline";
-import { Client } from "pg";
-import * as dotenv from "dotenv";
+import * as fs from 'fs';
+import * as path from 'path';
+import * as readline from 'readline';
+import { Client } from 'pg';
+import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-const DATA_PATH = path.join(__dirname, "data", "nifc-perimeters.ndjson");
+const DATA_PATH = path.join(__dirname, 'data', 'nifc-perimeters.ndjson');
 
 // Parse "20140201000000" → "2014-02-01"
 const parseDateCur = (raw?: string): string | null => {
@@ -34,7 +34,7 @@ const load = async (): Promise<void> => {
   });
 
   await client.connect();
-  console.log("Connected to database.");
+  console.log('Connected to database.');
   console.log(`Reading ${DATA_PATH}...`);
 
   const rl = readline.createInterface({
@@ -67,9 +67,10 @@ const load = async (): Promise<void> => {
       await client.query(
         `INSERT INTO fire_perimeters
            (fire_name, year, agency, state, acres_burned,
-            fire_date_start, source, country, geom)
+            fire_date_start, source, country, geom, geom_simplified)
          VALUES ($1, $2, $3, $4, $5, $6, $7, 'US',
-                 ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($8), 4326)))
+                 ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($8), 4326)),
+                 ST_SimplifyPreserveTopology(ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($8), 4326)), 0.001))
          ON CONFLICT (fire_name, year, state, source)
            WHERE fire_name IS NOT NULL AND state IS NOT NULL
          DO NOTHING`,
@@ -80,7 +81,7 @@ const load = async (): Promise<void> => {
           parseState(p.UNIT_ID),
           p.GIS_ACRES ?? null,
           parseDateCur(p.DATE_CUR),
-          "NIFC",
+          'NIFC',
           JSON.stringify(feature.geometry),
         ],
       );
@@ -100,9 +101,9 @@ const load = async (): Promise<void> => {
 
   console.log(`\nDone. Inserted: ${inserted}, Skipped: ${skipped}`);
 
-  console.log("Updating table statistics...");
-  client.on("notice", (msg) => console.log("[analyze]", msg.message));
-  await client.query("ANALYZE VERBOSE fire_perimeters");
+  console.log('Updating table statistics...');
+  client.on('notice', (msg) => console.log('[analyze]', msg.message));
+  await client.query('ANALYZE VERBOSE fire_perimeters');
 
   const { rows: stats } = await client.query(
     `SELECT COUNT(*)::int AS total,
@@ -122,6 +123,6 @@ const load = async (): Promise<void> => {
 };
 
 load().catch((err) => {
-  console.error("ETL failed:", err);
+  console.error('ETL failed:', err);
   process.exit(1);
 });
