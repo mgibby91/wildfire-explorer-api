@@ -556,22 +556,26 @@ Load all perimeters for the visible viewport once, then the slider is instant.
 - [x] **Risk score** — `MapMode` context (`idle | draw | risk`), `useRiskMode` hook, `RiskRadiusLayer`
       (50km white dashed circle), `RiskPanel` in sidebar with score + 4 sub-stats. Score uses
       `MAX(score)` from pre-calibrated `risk_grid` cells to avoid saturation.
-- [ ] **bbox ORDER BY** — change `GET /api/fires/bbox` from `ORDER BY acres_burned DESC` to
-      `ORDER BY year DESC, acres_burned DESC`. Rationale: ORDER BY determines which fires are
-      included when the viewport contains >200 results. Recent fires are more relevant for risk
-      assessment and align with the sidebar's existing client-side sort order.
+- [x] **bbox ORDER BY** — reverted to `ORDER BY acres_burned DESC NULLS LAST, year DESC`.
+      Pure `year DESC` caused year diversity loss (dense viewports returned only 2024 fires,
+      breaking the year slider). Final decision: largest fires always make the LIMIT cut,
+      year is tiebreaker. Sidebar re-sorts client-side by year DESC independently.
 
 ## Phase 3 — Polish & Expansion
 
-### Agreed order of work
+### Completed
 
-1. **bbox ORDER BY fix** (quick cleanup — see Phase 2 item above)
+1. **bbox ORDER BY fix** ✓ — see Phase 2 note above.
 
-2. **Canada CIFFC data** — Canadian Interagency Forest Fire Centre historical perimeters.
-   Same GeoJSON format as NIFC, near-identical ETL script. Adds personal Calgary narrative,
-   differentiates from US-only projects. Steps: download CIFFC GeoJSON, write `etl/load-ciffc.ts`
-   mirroring `load-nifc.ts`, set `country = 'CA'` and `source = 'CIFFC'` on insert. The
-   `fire_perimeters` schema already has `country` and `source` columns for this.
+2. **Canada CIFFC data** ✓ — 48,065 records loaded (1972–2024, 13 provinces). Data source is
+   NRCan NFDB shapefile (not a REST API). ETL: `etl/download-ciffc.ts` downloads + extracts zip,
+   runs `ogr2ogr -dim 2` to strip Z coords and convert to NDJSON; `etl/load-ciffc.ts` mirrors
+   load-nifc.ts with hectares→acres conversion (`CALC_HA * 2.47105`). Many CA fires have no
+   FIRENAME so fall back to FIRE_ID (e.g. "2021-K42078") — expected, not a bug. Both data files
+   loaded to Railway prod via `psql COPY` pipe (row-by-row insert is too slow over network).
+   risk_grid materialized view refreshed after load.
+
+### Next up
 
 3. **shadcn/ui + Tailwind** — introduce as the UI foundation before further frontend work.
    Built on Radix UI primitives, Tailwind-based, no imposed design language — better fit than MUI
