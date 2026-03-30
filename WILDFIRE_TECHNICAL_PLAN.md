@@ -584,7 +584,12 @@ Load all perimeters for the visible viewport once, then the slider is instant.
 5. **Mobile-responsive layout** — address after sidebar is collapsible, since Sheet gives a
    natural mobile drawer pattern.
 
-6. **Wind-adjusted spread direction** — pull NOAA Weather API (free, no key) for wind
+6. **Help modal** — a `?` icon in the top-left corner opens a modal summarising the app: what it
+   is, the data sources (NIFC, NASA FIRMS, CIFFC), and links to both GitHub repos. Targets
+   recruiters/employers clicking the deployed link who want to understand the project quickly.
+   Implement after shadcn/ui is installed (use its `Dialog` component).
+
+7. **Wind-adjusted spread direction** — pull NOAA Weather API (free, no key) for wind
    speed/direction at active hotspot locations. New `/api/spread` endpoint returns wind vectors;
    frontend draws directional arrows on the hotspot layer. Makes the app feel live ("what might
    happen next") rather than purely archival.
