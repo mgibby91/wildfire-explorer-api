@@ -107,7 +107,7 @@ export const getFiresInBbox = async (
       AND year BETWEEN 1900 AND EXTRACT(YEAR FROM NOW())
       AND ($5::int IS NULL OR year >= $5)
       AND ($6::int IS NULL OR year <= $6)
-    ORDER BY acres_burned DESC NULLS LAST
+    ORDER BY acres_burned DESC NULLS LAST, year DESC
     LIMIT $7`,
     [west, south, east, north, yearMin ?? null, yearMax ?? null, limit],
   );

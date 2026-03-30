@@ -546,55 +546,55 @@ Load all perimeters for the visible viewport once, then the slider is instant.
 
 ## Phase 2 — Remaining work (priority order)
 
-- [ ] **Draw custom bbox** — rectangle draw tool implemented with raw Mapbox map events
-      (mousedown/mousemove/mouseup). No external dependency. See MapView + useDrawMode hook.
-- [ ] **Reconsider bbox ORDER BY** — currently `acres_burned DESC`. Alternative: `year DESC, acres_burned DESC`
-      to match sidebar sort and prioritise recent fires when viewport is large. Decision pending.
-- [ ] **Deploy** — Railway or Render (free tier). README with screenshots and live URL.
-- [ ] **FRP hotspot filtering** — capture `frp` field from FIRMS CSV, add to DB schema,
-      expose as `min_frp` query param on `/api/active`. Filters industrial false positives
-      before deploying to a wider audience.
-- [ ] **Risk score** — click map point → query `/api/risk` → show score + breakdown in
-      sidebar. Visual treatment: draw 50km radius circle on map at clicked point (makes
-      coverage area explicit), show sub-components (fire count, most recent year, largest
-      fire, nearby hotspots) alongside the 0–100 score.
+- [x] **Draw custom bbox** — implemented with raw Mapbox mouse events (mousedown/mousemove/mouseup).
+      No external dependency. `useDrawMode` hook, `SearchControls` button.
+- [x] **Deploy** — API on Railway (custom PostGIS Docker image + TCP proxy), frontend on Vercel.
+      `npm run deploy` scripts added to both packages.
+- [x] **FRP hotspot filtering** — `frp NUMERIC` added to `active_hotspots` (migration 006),
+      poller captures it with `ON CONFLICT DO UPDATE` backfill, `min_frp` query param on
+      `/api/active`, frontend preset buttons (All / ≥10 MW / ≥50 MW) in `HotspotLegend`.
+- [x] **Risk score** — `MapMode` context (`idle | draw | risk`), `useRiskMode` hook, `RiskRadiusLayer`
+      (50km white dashed circle), `RiskPanel` in sidebar with score + 4 sub-stats. Score uses
+      `MAX(score)` from pre-calibrated `risk_grid` cells to avoid saturation.
+- [ ] **bbox ORDER BY** — change `GET /api/fires/bbox` from `ORDER BY acres_burned DESC` to
+      `ORDER BY year DESC, acres_burned DESC`. Rationale: ORDER BY determines which fires are
+      included when the viewport contains >200 results. Recent fires are more relevant for risk
+      assessment and align with the sidebar's existing client-side sort order.
 
 ## Phase 3 — Polish & Expansion
 
-### MVP Polish
+### Agreed order of work
 
-- [ ] Introduce **shadcn/ui** for UI components (built on Radix UI primitives,
-      Tailwind-based, no imposed design language — better fit than MUI for a
-      map-first app). Add Tailwind at this point.
-- [ ] **Collapsible sidebar** — replace current fixed sidebar with shadcn/ui `Sheet`
-      component. Gets animation, accessibility (focus trap, escape key), and toggle
-      button for free. Map overlay controls (slider, search, legend) should shift
-      position when sidebar is open.
-- [ ] Mobile-responsive layout
+1. **bbox ORDER BY fix** (quick cleanup — see Phase 2 item above)
 
-### Post-MVP Expansion Ideas (Months 2–4)
+2. **Canada CIFFC data** — Canadian Interagency Forest Fire Centre historical perimeters.
+   Same GeoJSON format as NIFC, near-identical ETL script. Adds personal Calgary narrative,
+   differentiates from US-only projects. Steps: download CIFFC GeoJSON, write `etl/load-ciffc.ts`
+   mirroring `load-nifc.ts`, set `country = 'CA'` and `source = 'CIFFC'` on insert. The
+   `fire_perimeters` schema already has `country` and `source` columns for this.
 
-1. **FRP-based hotspot filtering** — The FIRMS VIIRS CSV response includes an `frp` field
-   (Fire Radiative Power in MW) that the current poller drops. Industrial sources (power plants,
-   steel mills) typically read <10 MW; agricultural burns 10–100 MW; wildfires 100+ MW. Adding
-   FRP would let users filter out industrial false positives. Steps: add `frp NUMERIC` column to
-   `active_hotspots`, extend `FirmsRow` and the INSERT in `firms-poller.ts` to capture it, expose
-   it in `HotspotProperties`, add optional `min_frp` query param to `GET /api/active`.
-   `brightness` (`bright_ti4`, Kelvin) is already stored and is a useful proxy, but FRP is the
-   more discriminating field for fire vs. industrial heat.
+3. **shadcn/ui + Tailwind** — introduce as the UI foundation before further frontend work.
+   Built on Radix UI primitives, Tailwind-based, no imposed design language — better fit than MUI
+   for a map-first app. Install both before building any new UI components.
 
-2. **Canada CIFFC data** — equivalent dataset from Canadian Interagency Forest
-   Fire Centre. Adds personal relevance (Calgary) and differentiates the project.
-2. **Evacuation route analysis** — overlay OSM road network, flag roads that
-   intersect active perimeters. Requires pgRouting.
-3. **Property-level risk scoring** — join against US county parcel data.
-   "What's the risk score for this address?"
-4. **Alert subscription** — user registers a lat/lng, gets emailed when a new
-   FIRMS hotspot appears within X km. Adds backend complexity (queues, email).
-5. **Wind-adjusted spread direction** — pull NOAA weather API, show a vector
-   overlay indicating likely spread direction from active hotspots.
-6. **Multi-hazard platform** — add earthquake zones + flood plains as toggle
-   layers. Broadens the project's scope significantly.
+4. **Collapsible sidebar** — replace current fixed sidebar with shadcn/ui `Sheet` component.
+   Gets animation, accessibility (focus trap, escape key), and toggle button for free. Map overlay
+   controls (slider, search, legend) should account for sidebar open/closed state.
+
+5. **Mobile-responsive layout** — address after sidebar is collapsible, since Sheet gives a
+   natural mobile drawer pattern.
+
+6. **Wind-adjusted spread direction** — pull NOAA Weather API (free, no key) for wind
+   speed/direction at active hotspot locations. New `/api/spread` endpoint returns wind vectors;
+   frontend draws directional arrows on the hotspot layer. Makes the app feel live ("what might
+   happen next") rather than purely archival.
+
+### Further expansion ideas (lower priority)
+
+- **Evacuation route analysis** — OSM road network, flag roads intersecting active perimeters. Requires pgRouting.
+- **Property-level risk scoring** — join against US county parcel data for address-level scores.
+- **Alert subscription** — email when a new FIRMS hotspot appears within X km of a registered point.
+- **Multi-hazard platform** — earthquake zones + flood plains as toggle layers.
 
 ---
 
